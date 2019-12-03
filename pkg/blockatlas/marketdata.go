@@ -64,4 +64,8 @@ func (t *Ticker) ApplyRate(rate float64, currency string) {
 	}
 	t.Price.Value *= rate
 	t.Price.Currency = currency
+
+	p := 1.0 / t.Price.Value
+	variation := t.Price.Change24h / p
+	t.Price.Change24h -= variation
 }
