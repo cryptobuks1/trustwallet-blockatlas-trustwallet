@@ -33,5 +33,6 @@ type Quote struct {
 }
 
 type USD struct {
-	Price float64 `json:"price"`
+	Price            float64 `json:"price"`
+	PercentChange24h float64 `json:"percent_change_24h"`
 }
