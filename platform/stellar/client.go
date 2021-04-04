@@ -1,20 +1,22 @@
 package stellar
 
 import (
+	"errors"
 	"fmt"
-	"github.com/trustwallet/blockatlas/pkg/blockatlas"
-	"github.com/trustwallet/blockatlas/pkg/errors"
 	"net/url"
+
+	"github.com/trustwallet/golibs/client"
 )
 
 type Client struct {
-	blockatlas.Request
+	client.Request
 }
 
 func (c *Client) GetTxsOfAddress(address string) ([]Payment, error) {
 	query := url.Values{
 		"order": {"desc"},
 		"limit": {"25"},
+		"join":  {"transactions"},
 	}
 	path := fmt.Sprintf("accounts/%s/payments", url.PathEscape(address))
 
@@ -24,17 +26,6 @@ func (c *Client) GetTxsOfAddress(address string) ([]Payment, error) {
 		return nil, err
 	}
 	return payments.Embedded.Records, nil
-}
-
-func (c *Client) GetTxHash(id string) (TxHash, error) {
-	path := fmt.Sprintf("transactions/%s", id)
-
-	var hash TxHash
-	err := c.Get(&hash, path, nil)
-	if err != nil {
-		return hash, err
-	}
-	return hash, nil
 }
 
 func (c *Client) CurrentBlockNumber() (int64, error) {
@@ -49,7 +40,7 @@ func (c *Client) CurrentBlockNumber() (int64, error) {
 	}
 
 	if len(ledgers.Embedded.Records) == 0 {
-		return 0, errors.E("CurrentBlockNumber: Records is empty", errors.TypePlatformUnmarshal).PushToSentry()
+		return 0, errors.New("CurrentBlockNumber: Records is empty")
 	}
 	return ledgers.Embedded.Records[0].Sequence, nil
 }
@@ -63,6 +54,7 @@ func (c *Client) GetBlockByNumber(num int64) (*Block, error) {
 	query := url.Values{
 		"order": {"desc"},
 		"limit": {"100"},
+		"join":  {"transactions"},
 	}
 	path := fmt.Sprintf("ledgers/%d/payments", num)
 

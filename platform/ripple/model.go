@@ -1,7 +1,14 @@
 package ripple
 
-import (
-	"github.com/trustwallet/blockatlas/pkg/blockatlas"
+import "github.com/trustwallet/golibs/types"
+
+type TransactionType string
+type TransactionResult string
+
+const (
+	transactionResultSuccess TransactionResult = "tesSUCCESS"
+
+	transactionPayment TransactionType = "Payment"
 )
 
 type Response struct {
@@ -21,19 +28,20 @@ type Tx struct {
 }
 
 type Payment struct {
-	TransactionType string            `json:"TransactionType"`
-	Flags           uint64            `json:"Flags"`
-	Sequence        uint64            `json:"Sequence"`
-	Fee             blockatlas.Amount `json:"Fee"`
-	SigningPubKey   string            `json:"SigningPubKey"`
-	TxnSignature    string            `json:"TxnSignature"`
-	Account         string            `json:"Account"`
-	Destination     string            `json:"Destination"`
-	DestinationTag  int64             `json:"DestinationTag,omitempty"`
+	TransactionType TransactionType `json:"TransactionType"`
+	Flags           uint64          `json:"Flags"`
+	Sequence        uint64          `json:"Sequence"`
+	Fee             types.Amount    `json:"Fee"`
+	SigningPubKey   string          `json:"SigningPubKey"`
+	TxnSignature    string          `json:"TxnSignature"`
+	Account         string          `json:"Account"`
+	Destination     string          `json:"Destination"`
+	DestinationTag  int64           `json:"DestinationTag,omitempty"`
 }
 
 type Meta struct {
-	DeliveredAmount interface{} `json:"delivered_amount,omitempty"`
+	TransactionResult TransactionResult `json:"TransactionResult,omitempty"`
+	DeliveredAmount   interface{}       `json:"delivered_amount,omitempty"`
 }
 
 type DeliveredAmount struct {

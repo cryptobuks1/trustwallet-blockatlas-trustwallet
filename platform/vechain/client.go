@@ -2,12 +2,13 @@ package vechain
 
 import (
 	"fmt"
-	"github.com/trustwallet/blockatlas/pkg/blockatlas"
 	"strings"
+
+	"github.com/trustwallet/golibs/client"
 )
 
 type Client struct {
-	blockatlas.Request
+	client.Request
 }
 
 func (c *Client) GetCurrentBlock() (int64, error) {
@@ -59,6 +60,11 @@ func (c *Client) GetTransactionByID(id string) (transaction Tx, err error) {
 func (c *Client) GetTransactionReceiptByID(id string) (transaction TxReceipt, err error) {
 	path := fmt.Sprintf("transactions/%s/receipt", id)
 	err = c.Get(&transaction, path, nil)
+	return
+}
+
+func (c *Client) GetAccount(address string) (account Account, err error) {
+	err = c.Get(&account, "accounts/"+address, nil)
 	return
 }
 

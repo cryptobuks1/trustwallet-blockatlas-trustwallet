@@ -2,15 +2,16 @@ package iotex
 
 import (
 	"fmt"
-	"github.com/trustwallet/blockatlas/pkg/blockatlas"
-	"github.com/trustwallet/blockatlas/pkg/errors"
-	"github.com/trustwallet/blockatlas/pkg/logger"
 	"net/url"
 	"strconv"
+
+	"github.com/trustwallet/blockatlas/pkg/blockatlas"
+	"github.com/trustwallet/golibs/client"
+	"github.com/trustwallet/golibs/types"
 )
 
 type Client struct {
-	blockatlas.Request
+	client.Request
 }
 
 func (c *Client) GetLatestBlock() (int64, error) {
@@ -21,7 +22,7 @@ func (c *Client) GetLatestBlock() (int64, error) {
 	}
 	b, err := strconv.ParseInt(chainMeta.Height, 10, 64)
 	if err != nil {
-		return 0, errors.E(err, "ParseInt failed", errors.TypePlatformUnmarshal).PushToSentry()
+		return 0, err
 	}
 	return b, nil
 }
@@ -40,11 +41,10 @@ func (c *Client) GetTxsOfAddress(address string, start int64) (*Response, error)
 	var response Response
 	err := c.Get(&response, "actions/addr/"+address, url.Values{
 		"start": {strconv.FormatInt(start, 10)},
-		"count": {strconv.FormatInt(blockatlas.TxPerPage, 10)},
+		"count": {strconv.Itoa(types.TxPerPage)},
 	})
 
 	if err != nil {
-		logger.Error(err, "IOTEX: Failed to get transactions for address", logger.Params{"address": address})
 		return nil, blockatlas.ErrSourceConn
 	}
 	return &response, err

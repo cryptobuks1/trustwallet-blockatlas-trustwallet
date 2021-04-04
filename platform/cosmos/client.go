@@ -2,23 +2,23 @@ package cosmos
 
 import (
 	"fmt"
-	"github.com/trustwallet/blockatlas/pkg/blockatlas"
-	"github.com/trustwallet/blockatlas/pkg/errors"
-	"github.com/trustwallet/blockatlas/pkg/logger"
 	"net/url"
 	"strconv"
+	"time"
+
+	"github.com/trustwallet/golibs/client"
 )
 
 // Client - the HTTP client
 type Client struct {
-	blockatlas.Request
+	client.Request
 }
 
 // GetAddrTxs - get all ATOM transactions for a given address
-func (c *Client) GetAddrTxs(address string, tag string) (txs TxPage, err error) {
+func (c *Client) GetAddrTxs(address, tag string, page int) (txs TxPage, err error) {
 	query := url.Values{
 		tag:     {address},
-		"page":  {"1"},
+		"page":  {strconv.Itoa(page)},
 		"limit": {"25"},
 	}
 	err = c.Get(&txs, "txs", query)
@@ -30,10 +30,9 @@ func (c *Client) GetAddrTxs(address string, tag string) (txs TxPage, err error) 
 
 func (c *Client) GetValidators() (validators Validators, err error) {
 	query := url.Values{
-		"status": {"bonded"},
-		"page":   {"1"},
+		"status": {"BOND_STATUS_BONDED"},
 	}
-	err = c.Get(&validators, "staking/validators", query)
+	err = c.GetWithCache(&validators, "staking/validators", query, time.Minute*10)
 	return
 }
 
@@ -52,18 +51,18 @@ func (c *Client) CurrentBlockNumber() (num int64, err error) {
 
 	num, err = strconv.ParseInt(block.Meta.Header.Height, 10, 64)
 	if err != nil {
-		return num, errors.E("error to ParseInt", errors.TypePlatformUnmarshal).PushToSentry()
+		return num, err
 	}
 
 	return
 }
 
 func (c *Client) GetPool() (result StakingPool, err error) {
-	return result, c.Get(&result, "staking/pool", nil)
+	return result, c.GetWithCache(&result, "staking/pool", nil, time.Minute*20)
 }
 
 func (c *Client) GetInflation() (inflation Inflation, err error) {
-	err = c.Get(&inflation, "minting/inflation", nil)
+	err = c.GetWithCache(&inflation, "minting/inflation", nil, time.Minute*20)
 	return
 }
 
@@ -71,7 +70,7 @@ func (c *Client) GetDelegations(address string) (delegations Delegations, err er
 	path := fmt.Sprintf("staking/delegators/%s/delegations", address)
 	err = c.Get(&delegations, path, nil)
 	if err != nil {
-		logger.Error(err, "Cosmos: Failed to get delegations for address")
+		return delegations, err
 	}
 	return
 }
@@ -80,7 +79,7 @@ func (c *Client) GetUnbondingDelegations(address string) (delegations UnbondingD
 	path := fmt.Sprintf("staking/delegators/%s/unbonding_delegations", address)
 	err = c.Get(&delegations, path, nil)
 	if err != nil {
-		logger.Error(err, "Cosmos: Failed to get unbonding delegations for address")
+		return delegations, err
 	}
 	return
 }

@@ -5,6 +5,13 @@ const (
 	rangeUnit    = "block"
 )
 
+const (
+	gasTokenName     = "VeThor"
+	gasTokenSymbol   = "VTHO"
+	gasTokenAddress  = "0x0000000000000000000000000000456E65726779"
+	gasTokenDecimals = 18
+)
+
 type LogRequest struct {
 	Options     Options       `json:"options,omitempty"`
 	CriteriaSet []CriteriaSet `json:"criteriaSet,omitempty"`
@@ -48,8 +55,9 @@ type Tx struct {
 }
 
 type TxReceipt struct {
-	Paid    string   `json:paid`
-	Outputs []Output `json:outputs`
+	Reverted bool     `json:"reverted"`
+	Paid     string   `json:"paid"`
+	Outputs  []Output `json:"outputs"`
 }
 
 type Output struct {
@@ -57,8 +65,8 @@ type Output struct {
 }
 
 type Event struct {
-	Address string   `json:address`
-	Topics  []string `json:topics`
+	Address string   `json:"address"`
+	Topics  []string `json:"topics"`
 	Data    string   `json:"data"`
 }
 
@@ -84,4 +92,8 @@ type LogMeta struct {
 	BlockId        string `json:"blockID,omitempty"`
 	BlockNumber    uint64 `json:"blockNumber,omitempty"`
 	BlockTimestamp int64  `json:"blockTimestamp,omitempty"`
+}
+
+type Account struct {
+	Balance string `json:"balance"`
 }

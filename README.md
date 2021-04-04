@@ -1,112 +1,167 @@
 # Block Atlas by Trust Wallet
 
 ![Go Version](https://img.shields.io/github/go-mod/go-version/TrustWallet/blockatlas)
-[![GoDoc](https://godoc.org/github.com/TrustWallet/blockatlas?status.svg)](https://godoc.org/github.com/TrustWallet/blockatlas) 
-[![Build Status](https://dev.azure.com/TrustWallet/Trust%20BlockAtlas/_apis/build/status/TrustWallet.blockatlas?branchName=master)](https://dev.azure.com/TrustWallet/Trust%20BlockAtlas/_build/latest?definitionId=27&branchName=master)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/43834b0c94ad4f6088629aa3e3bb5e94)](https://www.codacy.com/app/TrustWallet/blockatlas?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=TrustWallet/blockatlas&amp;utm_campaign=Badge_Grade)
+![CI](https://github.com/trustwallet/blockatlas/workflows/CI/badge.svg)
+[![codecov](https://codecov.io/gh/trustwallet/blockatlas/branch/master/graph/badge.svg)](https://codecov.io/gh/trustwallet/blockatlas)
 [![Go Report Card](https://goreportcard.com/badge/trustwallet/blockatlas)](https://goreportcard.com/report/TrustWallet/blockatlas)
-[![Docker](https://img.shields.io/docker/cloud/build/trustwallet/blockatlas.svg)](https://hub.docker.com/r/trustwallet/blockatlas)
+[![Dependabot Status](https://api.dependabot.com/badges/status?host=github&repo=trustwallet/blockatlas)](https://dependabot.com)
 
 > BlockAtlas is a clean explorer API and transaction observer for cryptocurrencies.
 
 BlockAtlas connects to nodes or explorer APIs of the supported coins and maps transaction data,
-account transaction history and market data into a generic, easy to work with JSON format.
-It is in production use at the [Trust Wallet app](https://trustwallet.com/),
-the official cryptocurrency wallet of Binance.
-The observer API watches the chain for new transactions and generates notifications by webhooks.
+account transaction history into a generic, easy to work with JSON format.
+It is in production use at the [Trust Wallet app](https://trustwallet.com/), 
+the official cryptocurrency wallet of Binance. Also is in production at the [BUTTON Wallet](https://buttonwallet.com), Telegram based non-custodial wallet.
+The observer API watches the chain for new transactions and generates notifications by guids.
 
 #### Supported Coins
 
-<a href="https://binance.com" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/714.png" width="32" /></a>
-<a href="https://nimiq.com" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/242.png" width="32" /></a>
-<a href="https://ripple.com" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/144.png" width="32" /></a>
-<a href="https://stellar.org" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/148.png" width="32" /></a>
-<a href="https://kin.org" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/2017.png" width="32" /></a>
-<a href="https://tezos.com" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/1729.png" width="32" /></a>
-<a href="https://aion.network" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/425.png" width="32" /></a>
-<a href="https://ethereum.org" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/60.png" width="32" /></a>
-<a href="https://ethereumclassic.github.io" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/61.png" width="32" /></a>
-<a href="https://poa.network" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/178.png" width="32" /></a>
-<a href="https://callisto.network" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/820.png" width="32" /></a>
-<a href="https://gochain.io" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/6060.png" width="32" /></a>
-<a href="https://wanchain.org" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/5718350.png" width="32" /></a>
-<a href="https://thundercore.com" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/1001.png" width="32" /></a>
-<a href="https://icon.foundation" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/74.png" width="32" /></a>
-<a href="https://tron.network" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/195.png" width="32" /></a>
-<a href="https://vechain.org/" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/818.png" width="32" /></a>
-<a href="https://www.thetatoken.org/" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/500.png" width="32" /></a>
-<a href="https://cosmos.network/" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/118.png" width="32" /></a>
-<a href="https://semux.org/" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/7562605.png" width="32" /></a>
-<a href="https://bitcoin.org/" target="_blank"><img src="https://raw.githubusercontent.com/TrustWallet/tokens/master/coins/0.png" width="32" /></a>
-<a href="https://harmony.one/" target="_blank"><img src="https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/harmony/info/logo.png" width="32" /></a>
+Block Atlas supports more than 25 blockchains: Bitcoin, Ethereum, Binance Chain etc, The full feature matrix is [here](docs/features.csv).
+
+## Architecture
+
+#### NOTE
+
+Currently Block Atlas is under active development and is not well documented. If you still want to run it on your own or help to contribute, **please** pay attention that currently integration, nemwan, functional tests are not working locally without all endpoints. We are fixing that issue and soon you will be able to test all the stuff locally
+
+Blockatlas allows to:
+
+-   Get information about transactions, tokens, staking details, collectibles for supported coins.
+-   Subscribe for price notifications via Rabbit MQ
+
+Platform API is independent service and can work with the specific blockchain only (like Bitcoin, Ethereum, etc)
+
+Notifications:
+
+-   Subscriber Producer - Create new blockatlas.SubscriptionEvent [Not implemented at Atlas, write it on your own]
+
+-   Subscriber - Get subscriptions from queue, set them to the DB
+
+-   Parser - Parse the block, convert block to the transactions batch, send to queue
+
+-   Notifier - Check each transaction for having the same address as stored at DB, if so - send tx data and id to the next queue
+
+-   Notifier Consumer - Notify the user [Not implemented at Atlas, write it on your own]
+
+
+```
+New Subscriptions --(Rabbit MQ)--> Subscriber --> DB
+                                                   |
+                      Parser  --(Rabbit MQ)--> Notifier --(Rabbit MQ)--> Notifier Consumer --> User
+
+```
+
+The whole flow is not available at Atlas repo. We will have integration tests with it. Also there will be examples of all instances soon.
 
 ## Setup
 
-### Requirements
+### Prerequisite
 
- * [Go Toolchain](https://golang.org/doc/install) versions 1.13+
- * [Redis](https://redis.io/topics/quickstart) instance (Transaction Observer only)
+-   [Go Toolchain](https://golang.org/doc/install) versions 1.14+
 
-### From Source
+    Depends on what type of Blockatlas service you would like to run will also be needed.
+-   [Postgres](https://www.postgresql.org/download) to store user subscriptions and latest parsed block number
+-   [Rabbit MQ](https://www.rabbitmq.com/#getstarted) to pass subscriptions and send transaction notifications
+
+### Quick Start
+
+#### Get source code
+
+Download source to `GOPATH`
 
 ```shell
-# Download source to $GOPATH
 go get -u github.com/trustwallet/blockatlas
 cd $(go env GOPATH)/src/github.com/trustwallet/blockatlas
+```
 
-# Start API server at port 8420
-go build -o blockatlas . && ./blockatlas api :8420
+#### Build and run
 
-# Start Observer
-go build -o blockatlas . && ./blockatlas observer
+Read [configuration](#configuration) info
 
-# Start sync worker for market prices and rates
-go build -o blockatlas . && ./blockatlas sync-markets
+```shell
+# Start Platform API server at port 8420 with the path to the config.yml ./
+go build -o api-bin cmd/api/main.go && ./api-bin -p 8420
+
+# Start parser with the path to the config.yml ./ 
+go build -o parser-bin cmd/parser/main.go && ./parser-bin
+
+# Start notifier with the path to the config.yml ./ 
+go build -o notifier-bin cmd/notifier/main.go && ./notifier-bin
+
+# Start subscriber with the path to the config.yml ./ 
+go build -o subscriber-bin cmd/subscriber/main.go && ./subscriber-bin
+```
+
+### make command
+
+Build and start all services:
+
+```shell
+make go-build
+make start
+```
+
+Build and start individual service:
+
+```shell
+make go-build-api
+make start
 ```
 
 ### Docker
 
-From Docker Hub:
-
-`docker run -it -p 8420:8420 trustwallet/blockatlas`
-
-Build and run from local Dockerfile:
+Build and run all services:
 
 ```shell
-docker build -t blockatlas .
-docker run -p 8420:8420 blockatlas
+docker-compose build
+docker-compose up
 ```
 
-### Heroku
+Build and run individual service:
 
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://www.heroku.com/deploy/?template=https://github.com/TrustWallet/blockatlas)
+```shell
+docker-compose build api
+docker-compose start api
+```
 
 ## Configuration
 
-Block Atlas can run just fine without configuration.
-By default, all coins offering public RPC/explorer APIs are enabled.
+When any of Block Atlas services started they look up inside [default configuration](./config.yml).
+Most coins offering public RPC/explorer APIs are enabled, thus Block Atlas can be started and used right away, no additional configuration needed.
+By default starting any of the [services](#architecture) will enable all platforms
 
-If you want to use custom RPC endpoints, or enable coins without public RPC (like Nimiq),
-you can configure Block Atlas over `config.yml` or environment variables.
+To run a specific service only by passing environmental variable, e.g: `ATLAS_PLATFORM=ethereum` :
 
-#### Config File
+```shell
+ATLAS_PLATFORM=ethereum go run cmd/api/main.go
 
-Config is loaded from `config.yml` if it exists in the working directory.
-The repository includes a [default config](./config.yml) for reference with all available config options.
+ATLAS_PLATFORM=ethereum binance bitcoin go run cmd/api/main.go # for multiple platforms
+```
 
-Example (`config.yml`):
+or change in config file
+
+```yaml
+# Single
+platform: [ethereum]
+# Multiple 
+platform: [ethereum, binance, bitcoin]
+```
+
+This way you can one platform per binary, for scalability and sustainability.
+
+To enable use of private endpoint:
 
 ```yaml
 nimiq:
   api: http://localhost:8648
-#...
 ```
+
+It works the same for worker - you can run all observer at 1 binary or 30 coins per 30 binaries
 
 #### Environment
 
 The rest gets loaded from environment variables.
-Every config option is available under the `ATLAS_` prefix.
-Nested keys are joined via `_` (Example `nimiq.api` => `NIMIQ_API`)
+Every config option is available under the `ATLAS_` prefix. Nested keys are joined via `_`.
 
 Example:
 
@@ -114,27 +169,53 @@ Example:
 ATLAS_NIMIQ_API=http://localhost:8648
 ```
 
+## Tests
+
+### Unit tests
+
+    make test
+
+### Mocked tests
+
+End-to-end tests with calls to external APIs has great value, but they are not suitable for regular CI verification, beacuse any external reason could break the tests.
+
+    # Start API server with mocked config, at port 8437 ./ 
+    go build -o api-bin cmd/api/main.go && ./api-bin -p 8437 -c configmock.yml
+
+Therefore mocked API-level tests are used, whereby external APIs are replaced by mocks.
+
+-   External mocks are implemented as a simple, own, golang `mockserver`.  It listens locally, and returns responses to specific API paths, taken from json data files.
+-   There is a file where API paths and corresponding data files are listed.
+-   Tests invoke into blockatlas through public APIs only, and are executed using _newman_ (Postman cli -- `make newman-mocked`).
+-   Product code, and even test code should not be aware whether it runs with mocks or the real external endpoints.
+-   See Makefile for targets with 'mock'; platform can be started locally with mocks using `make start-platform-api-mock`.
+-   The newman tests can be executed with unmocked external APIs as well, but verifications may fail, because some APIs return variable responses.  Unmocked tests are not intended for regular CI execution, but as ad-hoc development tests.
+-   General steps for creating new mocked tests: replace endpoint to localhost:3347, observe incoming calls (visible in mockserver's output), obtain real response from external API (with exact same parameters), place response in a file, add path + file to data file list.  Restart mock, and verify that blockatlas provides correct output.  Also, add verifications of results to the tests.
+
 ## Docs
 
 Swagger API docs provided at path `/swagger/index.html`
 
+or you can install `go-swagger` and render it locally (macOS example)
+
+Install:
+
+```shell
+brew tap go-swagger/go-swagger
+brew install go-swagger
+```
+
+Render: 
+
+```shell
+swagger serve docs/swagger.yaml
+```
+
 #### Updating Docs
 
-- After creating a new route, add comments to your API source code, [See Declarative Comments Format](https://swaggo.github.io/swaggo.io/declarative_comments_format/).
-- Download Swag for Go by using:
+-   After creating a new route, add comments to your API source code, [See Declarative Comments Format](https://swaggo.github.io/swaggo.io/declarative_comments_format/).
 
-    `$ go get -u github.com/swaggo/swag/cmd/swag`
-
-- Run the Swag in your Go project root folder.
-
-    `$ swag init`
-
-## Metrics
-
-The Blockatlas can collect and expose by `expvar's`, metrics about the application healthy and clients and server requests.
-Prometheus or another service can collect metrics provided from the `/metrics` endpoint.
-
-To protect the route, you can set the environment variables `METRICS_API_TOKEN`, and this route starts to require the auth bearer token. 
+-   Run `$ make go-gen-docs` in root folder.
 
 ## Contributing
 

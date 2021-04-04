@@ -1,0 +1,68 @@
+version: '3.7'
+services:
+  api:
+    container_name: api
+    environment:
+      - POSTGRES_URL=postgresql://user:pass@postgres/blockatlas?sslmode=disable
+      - POSTGRES_READ_URL=postgresql://user:pass@postgres/blockatlas?sslmode=disable
+      - OBSERVER_RABBITMQ_URL=amqp://rabbit:5672
+    build:
+      context: .
+      args:
+        - SERVICE=api
+    ports:
+      - 8420:8420
+
+  consumer:
+    build:
+      context: .
+      args:
+        - SERVICE=consumer
+    environment:
+      - POSTGRES_URL=postgresql://user:pass@postgres/blockatlas?sslmode=disable
+      - POSTGRES_READ_URL=postgresql://user:pass@postgres/blockatlas?sslmode=disable
+      - OBSERVER_RABBITMQ_URL=amqp://rabbit:5672
+    links:
+      - rabbit
+      - postgres
+    restart: on-failure
+
+  parser:
+    build:
+      context: .
+      args:
+        - SERVICE=parser
+    environment:
+      - POSTGRES_URL=postgresql://user:pass@postgres/blockatlas?sslmode=disable
+      - POSTGRES_READ_URL=postgresql://user:pass@postgres/blockatlas?sslmode=disable
+      - OBSERVER_RABBITMQ_URL=amqp://rabbit:5672
+    links:
+      - rabbit
+      - postgres
+    restart: on-failure
+
+  rabbit:
+    container_name: rabbit
+    image: rabbitmq
+    ports:
+      - 5672:5672
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5672" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  postgres:
+    container_name: postgres
+    image: postgres
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=blockatlas
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5432" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5

@@ -1,176 +1,291 @@
 package binance
 
 import (
-	"encoding/json"
-	"fmt"
-	"github.com/trustwallet/blockatlas/coin"
-	"github.com/trustwallet/blockatlas/pkg/errors"
-	"math"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/trustwallet/golibs/types"
+
+	"github.com/trustwallet/golibs/coin"
+	"github.com/trustwallet/golibs/numbers"
 )
-
-type Account struct {
-	AccountNumber int       `json:"account_number"`
-	Address       string    `json:"address"`
-	Balances      []Balance `json:"balances"`
-	PublicKey     []byte    `json:"public_key"`
-	Sequence      uint64    `json:"sequence"`
-}
-
-type Balance struct {
-	Free   string `json:"free"`
-	Frozen string `json:"frozen"`
-	Locked string `json:"locked"`
-	Symbol string `json:"symbol"`
-}
-
-type Error struct {
-	Code    int64  `json:"code"`
-	Message string `json:"message"`
-}
-
-type BlockDescriptor struct {
-	BlockHeight int64  `json:"blockHeight"`
-	BlockHash   string `json:"blockHash"`
-	TxNum       int    `json:"txNum"`
-}
-
-type BlockList struct {
-	BlockArray []BlockDescriptor `json:"blockArray"`
-}
-
-type TxType string
 
 const (
-	TxTransfer    TxType = "TRANSFER"
-	TxNewOrder    TxType = "NEW_ORDER"
-	TxCancelOrder TxType = "CANCEL_ORDER"
+	NewOrder    TxType = "NEW_ORDER"
+	CancelOrder TxType = "CANCEL_ORDER"
+	Transfer    TxType = "TRANSFER"
 )
 
-type Tx struct {
-	BlockHeight   uint64      `json:"blockHeight"`
-	Type          TxType      `json:"txType"`
-	Code          int         `json:"code"`
-	ConfirmBlocks int         `json:"confirmBlocks"`
-	Data          string      `json:"data"`
-	FromAddr      string      `json:"fromAddr"`
-	OrderID       string      `json:"orderId"`
-	Timestamp     int64       `json:"timeStamp"`
-	ToAddr        string      `json:"toAddr"`
-	Age           int64       `json:"txAge"`
-	Asset         string      `json:"txAsset"`
-	Fee           json.Number `json:"txFee"`
-	Hash          string      `json:"txHash"`
-	Value         json.Number `json:"value"`
-	Memo          string      `json:"memo"`
-}
+const (
+	BNBAsset    = "BNB"
+	tokensLimit = "1000"
+)
 
-func (tx *Tx) getData() (Data, error) {
-	rawIn := json.RawMessage(tx.Data)
-	b, err := rawIn.MarshalJSON()
-	if err != nil {
-		return Data{}, errors.E(err, "getData MarshalJSON", errors.Params{"data": tx.Data})
+type (
+	NodeInfoResponse struct {
+		SyncInfo struct {
+			LatestBlockHeight int `json:"latest_block_height"`
+		} `json:"sync_info"`
 	}
 
-	var data Data
-	err = json.Unmarshal(b, &data)
-	if err != nil {
-		return Data{}, errors.E(err, "getData Unmarshal", errors.Params{"data": string(b)})
+	TxType string
+
+	TransactionsInBlockResponse struct {
+		BlockHeight int  `json:"blockHeight"`
+		Tx          []Tx `json:"tx"`
 	}
 
-	symbols := strings.Split(data.OrderData.Symbol, "_")
-	if len(symbols) < 2 {
-		return data, nil
+	Tx struct {
+		TxHash          string            `json:"txHash"`
+		BlockHeight     int               `json:"blockHeight"`
+		TxType          TxType            `json:"txType"`
+		TimeStamp       time.Time         `json:"timeStamp"`
+		FromAddr        interface{}       `json:"fromAddr"`
+		ToAddr          interface{}       `json:"toAddr"`
+		Value           string            `json:"value"`
+		TxAsset         string            `json:"txAsset"`
+		TxFee           string            `json:"txFee"`
+		OrderID         string            `json:"orderId,omitempty"`
+		Code            int               `json:"code"`
+		Data            string            `json:"data"`
+		Memo            string            `json:"memo"`
+		Source          int               `json:"source"`
+		SubTransactions []SubTransactions `json:"subTransactions,omitempty"`
+		Sequence        int               `json:"sequence"`
 	}
 
-	data.OrderData.Base = symbols[0]
-	data.OrderData.Quote = symbols[1]
-	return data, nil
-}
-
-type Data struct {
-	OrderData OrderData `json:"orderData"`
-}
-
-type OrderData struct {
-	Symbol   string      `json:"symbol"`
-	Base     string      `json:"-"`
-	Quote    string      `json:"-"`
-	Quantity interface{} `json:"quantity"`
-	Price    interface{} `json:"price"`
-}
-
-func (od OrderData) GetVolume() (int64, bool) {
-	price, ok := od.GetPrice()
-	if !ok {
-		return 0, false
+	TransactionData struct {
+		OrderData struct {
+			Symbol      string `json:"symbol"`
+			OrderType   string `json:"orderType"`
+			Side        string `json:"side"`
+			Price       string `json:"price"`
+			Quantity    string `json:"quantity"`
+			TimeInForce string `json:"timeInForce"`
+			OrderID     string `json:"orderId"`
+		} `json:"orderData"`
 	}
-	quantity, ok := od.GetQuantity()
-	if !ok {
-		return 0, false
+
+	SubTransactions struct {
+		TxHash      string `json:"txHash"`
+		BlockHeight int    `json:"blockHeight"`
+		TxType      string `json:"txType"`
+		FromAddr    string `json:"fromAddr"`
+		ToAddr      string `json:"toAddr"`
+		TxAsset     string `json:"txAsset"`
+		TxFee       string `json:"txFee"`
+		Value       string `json:"value"`
 	}
-	return removeFloatPoint(price * quantity), true
+
+	TransactionsByAddressAndAssetResponse struct {
+		Txs []Tx `json:"tx"`
+	}
+
+	AccountMeta struct {
+		Balances []TokenBalance `json:"balances"`
+	}
+
+	TokenBalance struct {
+		Free   string `json:"free"`
+		Frozen string `json:"frozen"`
+		Locked string `json:"locked"`
+		Symbol string `json:"symbol"`
+	}
+
+	Tokens []Token
+
+	Token struct {
+		Name           string `json:"name"`
+		OriginalSymbol string `json:"original_symbol"`
+		Owner          string `json:"owner"`
+		Symbol         string `json:"symbol"`
+		TotalSupply    string `json:"total_supply"`
+	}
+)
+
+func normalizeBlock(response TransactionsInBlockResponse) types.Block {
+	result := types.Block{
+		Number: int64(response.BlockHeight),
+	}
+	result.Txs = normalizeTransactions(response.Tx)
+	return result
 }
 
-func (od OrderData) GetPrice() (float64, bool) {
-	return convertValue(od.Price)
+func normalizeTransactions(txs []Tx) types.Txs {
+	totalTxs := make(types.Txs, 0, len(txs))
+	for _, t := range txs {
+		var txs types.Txs
+		switch t.TxType {
+		case CancelOrder, NewOrder:
+			//txs = append(txs, normalizeOrderTransaction(t))
+			continue
+		case Transfer:
+			if len(t.SubTransactions) > 0 {
+				txs = normalizeMultiTransferTransaction(t)
+			} else {
+				txs = append(txs, normalizeTransferTransaction(t))
+			}
+		}
+		totalTxs = append(totalTxs, txs...)
+	}
+	return totalTxs
 }
 
-func (od OrderData) GetQuantity() (float64, bool) {
-	return convertValue(od.Quantity)
-}
-
-type TxPage struct {
-	Nums int  `json:"txNums"`
-	Txs  []Tx `json:"txArray"`
-}
-
-type Token struct {
-	Mintable       bool   `json:"mintable"`
-	Name           string `json:"name"`
-	OriginalSymbol string `json:"original_symbol"`
-	Owner          string `json:"owner"`
-	Symbol         string `json:"symbol"`
-	TotalSupply    string `json:"total_supply"`
-}
-
-type TokenPage []Token
-
-// findToken find a token into a token list
-func (a TokenPage) findToken(symbol string) *Token {
-	for _, t := range a {
-		if t.Symbol == symbol {
-			return &t
+func normalizeTransferTransaction(t Tx) types.Tx {
+	tx := normalizeBaseOfTransaction(t)
+	tx.To = t.ToAddr.(string)
+	tx.From = t.FromAddr.(string)
+	switch {
+	case t.TxAsset == BNBAsset:
+		tx.Type = types.TxTransfer
+		tx.Meta = types.Transfer{
+			Value:    normalizeAmount(t.Value),
+			Symbol:   coin.Binance().Symbol,
+			Decimals: coin.Binance().Decimals,
+		}
+	case t.TxAsset != "":
+		tx.Type = types.TxNativeTokenTransfer
+		tx.Meta = types.NativeTokenTransfer{
+			Decimals: coin.Binance().Decimals,
+			From:     t.FromAddr.(string),
+			Symbol:   getTokenSymbolFromID(t.TxAsset),
+			Name:     getTokenSymbolFromID(t.TxAsset),
+			To:       t.ToAddr.(string),
+			TokenID:  t.TxAsset,
+			Value:    normalizeAmount(t.Value),
 		}
 	}
-	return nil
+	return tx
 }
 
-func (e *Error) Error() string {
-	return fmt.Sprintf("%d: %s", e.Code, e.Message)
-}
-
-func removeFloatPoint(value float64) int64 {
-	bnbCoin := coin.Coins[coin.BNB]
-	pow := math.Pow(10, float64(bnbCoin.Decimals))
-	return int64(value * pow)
-}
-
-func convertValue(value interface{}) (float64, bool) {
-	result := 0.0
-	switch v := value.(type) {
-	case float64:
-		result = v
-	case int:
-		result = float64(v)
-	case string:
-		f, err := strconv.ParseFloat(v, 64)
-		if err == nil {
-			result = f
+func normalizeMultiTransferTransaction(t Tx) types.Txs {
+	txs := make(types.Txs, 0, len(t.SubTransactions))
+	for _, subTx := range t.SubTransactions {
+		tx := types.Tx{
+			ID:       subTx.TxHash,
+			Coin:     coin.Binance().ID,
+			From:     subTx.FromAddr,
+			To:       subTx.ToAddr,
+			Fee:      normalizeFee(subTx.TxFee),
+			Date:     t.TimeStamp.Unix(),
+			Block:    uint64(t.BlockHeight),
+			Status:   types.StatusCompleted,
+			Sequence: uint64(t.Sequence),
+			Memo:     t.Memo,
 		}
-	default:
+		switch {
+		case subTx.TxAsset == BNBAsset:
+			tx.Type = types.TxTransfer
+			tx.Meta = types.Transfer{
+				Value:    normalizeAmount(subTx.Value),
+				Symbol:   coin.Binance().Symbol,
+				Decimals: coin.Binance().Decimals,
+			}
+		case subTx.TxAsset != "":
+			tx.Type = types.TxNativeTokenTransfer
+			tx.Meta = types.NativeTokenTransfer{
+				Decimals: coin.Binance().Decimals,
+				Name:     getTokenSymbolFromID(subTx.TxAsset),
+				From:     subTx.FromAddr,
+				Symbol:   getTokenSymbolFromID(subTx.TxAsset),
+				To:       subTx.ToAddr,
+				TokenID:  subTx.TxAsset,
+				Value:    normalizeAmount(subTx.Value),
+			}
+		default:
+			continue
+		}
+		txs = append(txs, tx)
+	}
+	return txs
+}
+
+func normalizeBaseOfTransaction(t Tx) types.Tx {
+	return types.Tx{
+		ID:       t.TxHash,
+		Coin:     coin.Binance().ID,
+		From:     t.FromAddr.(string),
+		Fee:      normalizeFee(t.TxFee),
+		Date:     t.TimeStamp.Unix(),
+		Block:    uint64(t.BlockHeight),
+		Status:   types.StatusCompleted,
+		Sequence: uint64(t.Sequence),
+		Memo:     t.Memo,
+	}
+}
+
+func normalizeTokens(srcBalance []TokenBalance, tokens Tokens) []types.Token {
+	assetIds := make([]types.Token, 0)
+	for _, srcToken := range srcBalance {
+		if token, ok := normalizeToken(srcToken, tokens); ok {
+			assetIds = append(assetIds, token)
+		}
+	}
+	return assetIds
+}
+
+func normalizeToken(srcToken TokenBalance, tokens Tokens) (types.Token, bool) {
+	var result types.Token
+	if srcToken.isAllZeroBalance() {
 		return result, false
 	}
+
+	token, ok := tokens.findTokenBySymbol(srcToken.Symbol)
+	if !ok {
+		return result, false
+	}
+
+	result = types.Token{
+		Name:     token.Name,
+		Symbol:   token.OriginalSymbol,
+		TokenID:  token.Symbol,
+		Coin:     coin.Binance().ID,
+		Decimals: coin.Binance().Decimals,
+		Type:     types.BEP2,
+	}
+
 	return result, true
+}
+
+func getTokenSymbolFromID(tokenID string) string {
+	s := strings.Split(tokenID, "-")
+	if len(s) > 1 {
+		return s[0]
+	}
+	return tokenID
+}
+
+func normalizeAmount(amount string) types.Amount {
+	val := numbers.DecimalExp(amount, int(coin.Binance().Decimals))
+	return types.Amount(val)
+}
+
+func normalizeFee(amount string) types.Amount {
+	a, err := numbers.StringNumberToFloat64(amount)
+	if a != 0 && err == nil {
+		return types.Amount(numbers.DecimalExp(amount, int(coin.Binance().Decimals)))
+	} else {
+		return "0"
+	}
+}
+
+func (balance TokenBalance) isAllZeroBalance() bool {
+	balances := [3]string{balance.Frozen, balance.Free, balance.Locked}
+	for _, value := range balances {
+		value, err := strconv.ParseFloat(value, 64)
+		if err != nil || value > 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func (page Tokens) findTokenBySymbol(symbol string) (Token, bool) {
+	for _, t := range page {
+		if t.Symbol == symbol {
+			return t, true
+		}
+	}
+	return Token{}, false
 }

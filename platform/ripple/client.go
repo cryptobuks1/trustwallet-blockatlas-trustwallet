@@ -2,28 +2,45 @@ package ripple
 
 import (
 	"fmt"
-	"github.com/trustwallet/blockatlas/pkg/blockatlas"
 	"net/url"
+
+	"github.com/trustwallet/golibs/client"
 )
 
 type Client struct {
-	blockatlas.Request
+	client.Request
 }
 
 func (c *Client) GetTxsOfAddress(address string) ([]Tx, error) {
+	res, err := c.fetchTransactions(address, "true")
+	if err != nil {
+		return nil, err
+	}
+
+	if res.Result == "error" {
+		res, err = c.fetchTransactions(address, "false")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return res.Transactions, nil
+}
+
+func (c *Client) fetchTransactions(address, descending string) (Response, error) {
 	query := url.Values{
-		"type":   {"Payment"},
-		"result": {"tesSUCCESS"},
-		"limit":  {"200"},
+		"type":       {"Payment"},
+		"descending": {descending},
+		"limit":      {"25"},
 	}
 	uri := fmt.Sprintf("accounts/%s/transactions", url.PathEscape(address))
 
 	var res Response
 	err := c.Get(&res, uri, query)
 	if err != nil {
-		return nil, err
+		return Response{}, err
 	}
-	return res.Transactions, nil
+	return res, nil
 }
 
 func (c *Client) GetCurrentBlock() (int64, error) {

@@ -1,17 +1,32 @@
 package tron
 
 import (
-	"github.com/trustwallet/blockatlas/pkg/blockatlas"
-	"github.com/trustwallet/blockatlas/pkg/errors"
-	"github.com/trustwallet/blockatlas/pkg/logger"
-	services "github.com/trustwallet/blockatlas/services/assets"
 	"strconv"
 	"time"
+
+	log "github.com/sirupsen/logrus"
+	"github.com/trustwallet/blockatlas/pkg/blockatlas"
+	"github.com/trustwallet/blockatlas/services/assets"
+	"github.com/trustwallet/golibs/types"
 )
+
+const Annual = 0.74
+
+func (p *Platform) GetActiveValidators() (blockatlas.StakeValidators, error) {
+	validators, err := assets.GetValidatorsMap(p)
+	if err != nil {
+		return nil, err
+	}
+	result := make(blockatlas.StakeValidators, 0, len(validators))
+	for _, v := range validators {
+		result = append(result, v)
+	}
+	return result, nil
+}
 
 func (p *Platform) GetValidators() (blockatlas.ValidatorPage, error) {
 	results := make(blockatlas.ValidatorPage, 0)
-	validators, err := p.client.GetValidators()
+	validators, err := p.client.fetchValidators()
 	if err != nil {
 		return results, err
 	}
@@ -31,7 +46,7 @@ func (p *Platform) GetDetails() blockatlas.StakingDetails {
 func getDetails() blockatlas.StakingDetails {
 	return blockatlas.StakingDetails{
 		Reward:        blockatlas.StakingReward{Annual: Annual},
-		MinimumAmount: blockatlas.Amount("1000000"),
+		MinimumAmount: types.Amount("1000000"),
 		LockTime:      259200,
 		Type:          blockatlas.DelegationTypeDelegate,
 	}
@@ -39,14 +54,14 @@ func getDetails() blockatlas.StakingDetails {
 
 func (p *Platform) GetDelegations(address string) (blockatlas.DelegationsPage, error) {
 	results := make(blockatlas.DelegationsPage, 0)
-	votes, err := p.client.GetAccountVotes(address)
+	votes, err := p.client.fetchAccountVotes(address)
 	if err != nil {
 		return nil, err
 	}
 	if len(votes.Votes) == 0 {
 		return results, nil
 	}
-	validators, err := services.GetValidatorsMap(p)
+	validators, err := assets.GetValidatorsMap(p)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +70,7 @@ func (p *Platform) GetDelegations(address string) (blockatlas.DelegationsPage, e
 }
 
 func (p *Platform) UndelegatedBalance(address string) (string, error) {
-	account, err := p.client.GetAccount(address)
+	account, err := p.client.fetchAccount(address)
 	if err != nil {
 		return "0", err
 	}
@@ -67,14 +82,14 @@ func (p *Platform) UndelegatedBalance(address string) (string, error) {
 }
 
 func normalizeValidator(v Validator) (validator blockatlas.Validator, ok bool) {
-	address, err := HexToAddress(v.Address)
+	a, err := HexToAddress(v.Address)
 	if err != nil {
 		return validator, false
 	}
 
 	return blockatlas.Validator{
 		Status:  true,
-		ID:      address,
+		ID:      a,
 		Details: getDetails(),
 	}, true
 }
@@ -84,7 +99,7 @@ func NormalizeDelegations(data *AccountData, validators blockatlas.ValidatorMap)
 	for _, v := range data.Votes {
 		validator, ok := validators[v.VoteAddress]
 		if !ok {
-			logger.Error(errors.E("Validator not found", errors.Params{"address": v.VoteAddress, "platform": "tron"}))
+			log.WithFields(log.Fields{"address": v.VoteAddress, "platform": "tron"}).Warn("Validator not found")
 			continue
 		}
 		delegation := blockatlas.Delegation{

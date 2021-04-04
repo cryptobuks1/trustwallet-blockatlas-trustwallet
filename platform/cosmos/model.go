@@ -39,16 +39,17 @@ const (
 
 // Tx - Base transaction object. Always returned as part of an array
 type Tx struct {
-	Block  string `json:"height"`
-	Code   int    `json:"code"`
-	Date   string `json:"timestamp"`
-	ID     string `json:"txhash"`
-	Data   Data   `json:"tx"`
-	Events Events `json:"events"`
+	Block string `json:"height"`
+	Code  int    `json:"code"`
+	Date  string `json:"timestamp"`
+	ID    string `json:"txhash"`
+	Data  Data   `json:"tx"`
+	Logs  Logs   `json:"logs"`
 }
 
 type TxPage struct {
-	Txs []Tx `json:"txs"`
+	PageTotal string `json:"page_total"`
+	Txs       []Tx   `json:"txs"`
 }
 
 // Events
@@ -57,13 +58,19 @@ type Event struct {
 	Attributes Attributes `json:"Attributes"`
 }
 
-type Events []*Event
+type Events struct {
+	Events []Event `json:"events"`
+}
 
-func (e Events) GetWithdrawRewardValue() string {
+type Logs []*Events
+
+func (l Logs) GetWithdrawRewardValue() string {
 	result := int64(0)
-	for _, att := range e {
-		if att.Type == EventWithdrawRewards {
-			result += att.Attributes.GetWithdrawRewardValue()
+	for _, log := range l {
+		for _, att := range log.Events {
+			if att.Type == EventWithdrawRewards {
+				result += att.Attributes.GetWithdrawRewardValue()
+			}
 		}
 	}
 	return strconv.FormatInt(result, 10)
@@ -164,13 +171,17 @@ type Inflation struct {
 }
 
 type Delegations struct {
-	List []Delegation `json:"result"`
+	List []DelegationValue `json:"result"`
+}
+
+type DelegationValue struct {
+	Delegation Delegation `json:"delegation"`
 }
 
 type Delegation struct {
 	DelegatorAddress string `json:"delegator_address"`
 	ValidatorAddress string `json:"validator_address"`
-	Shares           string `json:"shares,omitempty"`
+	Shares           string `json:"shares"`
 }
 
 func (d *Delegation) Value() string {
